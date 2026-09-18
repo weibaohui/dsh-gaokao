@@ -35,11 +35,21 @@ const STYLE = `
 .gk-chalk{width:22px;height:4px;border-radius:2px;background:#f0ede2}
 .gk-eraser{margin-left:auto;width:24px;height:7px;border-radius:2px;background:#4a5563;
   border-top:2px solid #b8b0a2}
+/* ── 竖条收起形态：教室黑板右缘那行竖字 ── */
+.gk-strip{position:relative;box-sizing:border-box;width:34px;height:150px;border-radius:3px;
+  border:3px solid #7d5a36;border-bottom-width:5px;background:#26423a;
+  box-shadow:inset 0 0 10px rgba(0,0,0,.4);
+  writing-mode:vertical-rl;text-orientation:upright;
+  display:flex;flex-direction:row;align-items:center;justify-content:center;
+  padding:10px 0 12px;cursor:grab}
+.gk-root.gk-shake .gk-strip{animation:gk-shake .6s ease}
+.gk-snum{font-size:21px;font-weight:700;color:#faf8f0;letter-spacing:3px}
+.gk-snum.gk-snum-red{color:#e88d7c}
+.gk-stray{position:absolute;left:2px;right:2px;bottom:-7px;height:6px;border-radius:0 0 3px 3px;background:#6b4a28}
 /* ── 知识卡：练习本（横线纸 + 红栏线，右下角拖角调大小） ── */
 .gk-card{position:absolute;right:-6px;bottom:calc(100% + 18px);width:392px;height:520px;resize:both;box-sizing:border-box;
   min-width:320px;min-height:340px;max-width:min(94vw,960px);max-height:88vh;
   display:flex;flex-direction:column;overflow:hidden;color:#2c3a4a;border-radius:5px;color-scheme:light;
-  background:repeating-linear-gradient(#fdfcf7 0 27px,#dbe7f3 27px 28px);
   border:1px solid #b9c4d2;box-shadow:0 14px 44px rgba(0,0,0,.5);
   animation:gk-pop .22s ease}
 .gk-card.gk-align-left{right:auto;left:-6px}
@@ -141,9 +151,12 @@ const LS_SIZE = 'gk-size'
 const LS_SUBJECTS = 'gk-subjects'
 const LS_EXAM = 'gk-exam-date'
 const LS_ZOOM = 'gk-zoom'
+const LS_FORM = 'gk-form'
+const LS_PAPER = 'gk-paper'
+const LS_GRID = 'gk-grid'
 
 function ensureStyle() {
-  const id = 'dsh-gaokao-style-v3'
+  const id = 'dsh-gaokao-style-v4'
   if (!document.getElementById(id)) {
     document.querySelectorAll('style[id^="dsh-gaokao-style"]').forEach((n) => n.remove())
     const tag = document.createElement('style')
@@ -159,6 +172,29 @@ const ORIGINS = {
   tool_error: '卡壳了？翻翻课本压压惊——',
   turn_abort: '课间十分钟，来一题——',
   user_msg: '老师提问时间到——',
+}
+
+/** 护眼底色（网传流行护眼配色）与笔记本格线样式 */
+const PAPER_COLORS = [
+  ['豆沙绿', '#C7EDCC'], ['青草绿', '#E3EDCD'], ['杏仁黄', '#FAF9DE'], ['秋叶褐', '#FFF2E2'],
+  ['胭脂红', '#FDE6E0'], ['海天蓝', '#DCE2F1'], ['银河白', '#FFFFFF'],
+]
+const GRID_STYLES = ['横线', '方格', '点阵', '空白']
+const GRID_LINE = 'rgba(90,120,150,.18)'
+
+/** 练习本背景：底色 + 格线（行高 28px 与正文行高一致） */
+function paperBackground(color, grid) {
+  const h = `repeating-linear-gradient(to bottom, transparent 0, transparent 27px, ${GRID_LINE} 27px, ${GRID_LINE} 28px)`
+  const v = `repeating-linear-gradient(to right, transparent 0, transparent 27px, ${GRID_LINE} 27px, ${GRID_LINE} 28px)`
+  const image = grid === '横线' ? h
+    : grid === '方格' ? `${h}, ${v}`
+    : grid === '点阵' ? 'radial-gradient(circle, rgba(90,120,150,.32) 1.3px, transparent 1.6px)'
+    : 'none'
+  return {
+    backgroundColor: color,
+    backgroundImage: image,
+    backgroundSize: grid === '点阵' ? '28px 28px' : undefined,
+  }
 }
 
 const lsGet = (k, dft) => { try { return JSON.parse(localStorage.getItem(k) || 'null') ?? dft } catch { return dft } }
@@ -325,7 +361,16 @@ module.exports = {
       const [customExam, setCustomExam] = useState(() => localStorage.getItem(LS_EXAM) || '')
       const [zoom, setZoom] = useState(() => {
         const v = Number(localStorage.getItem(LS_ZOOM))
-        return Number.isFinite(v) && v >= 0.6 && v <= 1.5 ? v : 0.8   // 默认比原始小两号
+        return Number.isFinite(v) && v >= 0.3 && v <= 1.5 ? v : 0.6   // 默认 60%，最小 30%
+      })
+      const [form, setForm] = useState(() => (lsGet(LS_FORM, 'board') === 'strip' ? 'strip' : 'board'))
+      const [paper, setPaper] = useState(() => {
+        const v = lsGet(LS_PAPER, '豆沙绿')
+        return PAPER_COLORS.some(([n]) => n === v) ? v : '豆沙绿'
+      })
+      const [grid, setGrid] = useState(() => {
+        const v = lsGet(LS_GRID, '横线')
+        return GRID_STYLES.includes(v) ? v : '横线'
       })
       const [days, setDays] = useState(null)
       const [origin, setOrigin] = useState(null)
@@ -344,6 +389,7 @@ module.exports = {
       const stageRef = React.useRef(undefined)
       const cardRef = React.useRef(undefined)
       const drag = React.useRef(undefined)
+      const clickTimer = React.useRef(0)      // 单击延时翻开卡片；dblclick 到来则取消并切形态
       const fxTimer = React.useRef(0)
 
       const shake = () => {
@@ -640,14 +686,35 @@ module.exports = {
           const d = drag.current
           drag.current = undefined
           if (d && !d.moved) {
-            shake()
-            setOrigin(null)
-            setOpen((v) => !v)
+            // 单击延时翻卡：若 dblclick 随后到来会被取消，转去切形态
+            if (clickTimer.current) clearTimeout(clickTimer.current)
+            clickTimer.current = setTimeout(() => {
+              clickTimer.current = 0
+              shake()
+              setOrigin(null)
+              setOpen((v) => !v)
+            }, 450)
           }
+        }
+        const onDbl = (e) => {
+          if (!(e.target && e.target.closest && e.target.closest('.gk-stage'))) return
+          if (clickTimer.current) { clearTimeout(clickTimer.current); clickTimer.current = 0 }
+          shake()
+          setForm((f) => {
+            const next = f === 'board' ? 'strip' : 'board'
+            lsSet(LS_FORM, next)
+            return next
+          })
         }
         window.addEventListener('mousemove', move)
         window.addEventListener('mouseup', up)
-        return () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up) }
+        window.addEventListener('dblclick', onDbl)
+        return () => {
+          window.removeEventListener('mousemove', move)
+          window.removeEventListener('mouseup', up)
+          window.removeEventListener('dblclick', onDbl)
+          if (clickTimer.current) clearTimeout(clickTimer.current)
+        }
       }, [])
 
       const related = (card && card.related) || []
@@ -661,7 +728,7 @@ module.exports = {
         open && React.createElement('div', {
           ref: cardRef,
           className: cardCls,
-          style: { width: size.w, height: size.h, maxHeight: cardMaxH || undefined },
+          style: { width: size.w, height: size.h, maxHeight: cardMaxH || undefined, ...paperBackground(PAPER_COLORS.find(([n]) => n === paper)[1], grid) },
           onMouseDown: manualTouch,
         },
           React.createElement('div', { className: 'gk-head' },
@@ -671,9 +738,7 @@ module.exports = {
             }, card ? card.subject : '课本'),
             React.createElement('span', { className: 'gk-grade' }, card ? card.grade : '高中'),
             React.createElement('div', { className: 'gk-htext' },
-              React.createElement('div', { className: 'gk-title' }, card ? card.title : '梦回高三'),
-              React.createElement('div', { className: 'gk-sub' },
-                card ? [card.summary].filter(Boolean).join('') : '翻开课本，全是重点')),
+              React.createElement('div', { className: 'gk-title' }, card ? card.title : '梦回高三')),
             React.createElement('div', { className: 'gk-days', title: examDate ? `高考日：${customExam || examDate}` : '' },
               React.createElement('div', null, '距高考'),
               React.createElement('b', null, daysText), '天'),
@@ -706,9 +771,32 @@ module.exports = {
                       React.createElement('span', { className: 'gk-setk' }),
                       React.createElement('span', { className: 'gk-setc' }, `${count} 张`))),
                     React.createElement('div', { className: 'gk-setdate' },
+                      React.createElement('span', null, '纸张底色'),
+                      React.createElement('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '6px', flex: 1 } },
+                        PAPER_COLORS.map(([name, hex]) => React.createElement('span', {
+                          key: name,
+                          title: name,
+                          onClick: () => { setPaper(name); lsSet(LS_PAPER, name) },
+                          style: {
+                            width: '20px', height: '20px', borderRadius: '5px', background: hex,
+                            border: '1px solid rgba(0,0,0,.18)', cursor: 'pointer', boxSizing: 'border-box',
+                            outline: paper === name ? '2px solid #2d5a8a' : 'none', outlineOffset: '1px',
+                          },
+                        }))),
+                      React.createElement('span', { className: 'gk-setc' }, paper)),
+                    React.createElement('div', { className: 'gk-setdate' },
+                      React.createElement('span', null, '格线样式'),
+                      React.createElement('div', { style: { display: 'flex', gap: '6px', flex: 1 } },
+                        GRID_STYLES.map((g) => React.createElement('button', {
+                          key: g,
+                          className: 'gk-chipx' + (grid === g ? ' gk-on' : ''),
+                          onClick: () => { setGrid(g); lsSet(LS_GRID, g) },
+                        }, g))),
+                      React.createElement('span', { className: 'gk-setc' })),
+                    React.createElement('div', { className: 'gk-setdate' },
                       React.createElement('span', null, '黑板大小'),
                       React.createElement('input', {
-                        type: 'range', min: 60, max: 150, step: 5,
+                        type: 'range', min: 30, max: 150, step: 5,
                         value: Math.round(zoom * 100),
                         style: { accentColor: '#2d5a8a', cursor: 'pointer' },
                         onChange: (e) => {
@@ -718,6 +806,17 @@ module.exports = {
                         },
                       }),
                       React.createElement('span', { className: 'gk-setc' }, `${Math.round(zoom * 100)}%`)),
+                    React.createElement('div', { className: 'gk-setdate' },
+                      React.createElement('span', null, '黑板形态'),
+                      React.createElement('button', {
+                        className: 'gk-chipx' + (form === 'board' ? ' gk-on' : ''),
+                        onClick: () => { setForm('board'); lsSet(LS_FORM, 'board') },
+                      }, '黑板'),
+                      React.createElement('button', {
+                        className: 'gk-chipx' + (form === 'strip' ? ' gk-on' : ''),
+                        onClick: () => { setForm('strip'); lsSet(LS_FORM, 'strip') },
+                      }, '竖条'),
+                      React.createElement('span', { className: 'gk-setc' }, '双击黑板可切换')),
                     React.createElement('div', { className: 'gk-setdate' },
                       React.createElement('span', null, '高考日期'),
                       React.createElement('input', {
@@ -783,17 +882,23 @@ module.exports = {
             React.createElement('div', { className: 'gk-spacer' }))),
         React.createElement('div', {
           ref: stageRef, className: 'gk-stage',
-          title: `距离高考还有 ${daysText} 天（点击翻开知识卡，拖动换位）`,
+          title: form === 'board'
+            ? `距离高考还有 ${daysText} 天（点击抽背，双击收成竖条）`
+            : `距离高考还有 ${daysText} 天（点击抽背，双击展开黑板）`,
           style: { transform: `scale(${zoom})` },
           onMouseDown: onDown,
         },
-          React.createElement('div', { className: 'gk-board' },
-            React.createElement('div', { className: 'gk-bline' }, '距离高考还有'),
-            React.createElement('div', { className: 'gk-bnum' + (days !== null && days <= 100 ? ' gk-bnum-red' : '') }, daysText),
-            React.createElement('div', { className: 'gk-bsub' }, '天'),
-            React.createElement('div', { className: 'gk-tray' },
-              React.createElement('span', { className: 'gk-chalk' }),
-              React.createElement('span', { className: 'gk-eraser' })))),
+          form === 'board'
+            ? React.createElement('div', { className: 'gk-board' },
+                React.createElement('div', { className: 'gk-bline' }, '距离高考还有'),
+                React.createElement('div', { className: 'gk-bnum' + (days !== null && days <= 100 ? ' gk-bnum-red' : '') }, daysText),
+                React.createElement('div', { className: 'gk-bsub' }, '天'),
+                React.createElement('div', { className: 'gk-tray' },
+                  React.createElement('span', { className: 'gk-chalk' }),
+                  React.createElement('span', { className: 'gk-eraser' })))
+            : React.createElement('div', { className: 'gk-strip' },
+                React.createElement('span', { className: 'gk-snum' + (days !== null && days <= 100 ? ' gk-snum-red' : '') }, daysText),
+                React.createElement('span', { className: 'gk-stray' }))),
       )
     }
 
