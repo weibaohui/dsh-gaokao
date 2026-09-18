@@ -6,7 +6,7 @@
  * 梦回高三：桌面右下角一块可拖拽的小黑板，粉笔字写着"距离高考还有 N 天"。
  * 点黑板翻开练习本知识卡，随机展示一张 Markdown 知识点卡。
  *  - 🎲 随机 / ⏮ 上一个 / ⏭ 下一个（历史前进后退，到顶再抽新卡）
- *  - ❤ 收藏（⭐ 收藏夹）/ 📥 加入复习（📖 复习清单，掌握后移出）
+ *  - ❤ 收藏（⭐ 收藏夹回看）
  *  - 正文 [[wikilink]] 与底部"关联知识点" chips 都可点击跳转
  *  - ⚙ 重点学习学科勾选（只随机选中学科）+ 自定义高考日期
  *  - 会话事件联动：回合结束/工具报错时黑板一震，自动浮现知识点
@@ -94,8 +94,8 @@ const STYLE = `
 .gk-wiki:hover{background:rgba(45,111,210,.12)}
 .gk-wiki.gk-wiki-miss{color:#a3aebc;border-bottom-color:rgba(163,174,188,.5);cursor:default;text-decoration:line-through}
 /* 关联知识点 chips */
-.gk-rel{padding:4px 20px 8px 46px;flex-shrink:0;border-top:1px dashed #c3cdd9;background:rgba(242,246,251,.96)}
-.gk-rel-t{font-size:11px;color:#7a8aa0;letter-spacing:2px;margin-bottom:4px}
+/* 关联知识点 chips（半透明浮层，无标题） */
+.gk-rel{padding:6px 20px 8px 46px;flex-shrink:0;border-top:1px dashed #c3cdd9;background:rgba(255,255,255,.42)}
 .gk-relrow{display:flex;flex-wrap:wrap;gap:5px;max-height:64px;overflow-y:auto;scrollbar-width:thin}
 .gk-relchip{font-size:11.5px;color:#2d5a8a;background:#fff;border:1px solid #b8cbe0;border-radius:10px;
   padding:1px 9px;cursor:pointer;font-family:inherit;letter-spacing:.5px}
@@ -113,7 +113,7 @@ const STYLE = `
 .gk-chipx{border:1px solid #b9c4d2;background:transparent;color:#5a6b80;font-size:10.5px;border-radius:9px;padding:2px 7px;
   cursor:pointer;font-family:inherit;letter-spacing:1px}
 .gk-chipx.gk-on{background:#2d5a8a;border-color:#2d5a8a;color:#fff}
-/* 列表面板（收藏夹/复习清单/设置） */
+/* 列表面板（收藏夹/设置） */
 .gk-panel{flex:1;min-height:0;overflow-y:auto;padding:4px 14px 10px 44px;scrollbar-width:thin;scrollbar-color:#b9c4d2 transparent}
 .gk-row{display:flex;align-items:center;gap:8px;padding:6px 4px;border-bottom:1px dashed #c9d4e0;cursor:pointer}
 .gk-row:hover{background:rgba(45,90,138,.06)}
@@ -143,7 +143,6 @@ const SUBJECT_COLORS = {
 const subjectColor = (s) => SUBJECT_COLORS[s] || '#5d6b7d'
 
 const LS_FAVS = 'gk-favs'
-const LS_REVIEW = 'gk-review'
 const LS_RECENT = 'gk-recent'
 const LS_HIST = 'gk-hist'
 const LS_AUTO = 'gk-auto'
@@ -343,10 +342,8 @@ module.exports = {
       const [open, setOpen] = useState(false)
       const [card, setCard] = useState(null)
       const [loved, setLoved] = useState(false)
-      const [inReview, setInReview] = useState(false)
       const [favs, setFavs] = useState(() => lsGet(LS_FAVS, []))
-      const [review, setReview] = useState(() => lsGet(LS_REVIEW, []))
-      const [panel, setPanel] = useState('body')          // body | favs | review | settings
+      const [panel, setPanel] = useState('body')          // body | favs | settings
       const [auto, setAuto] = useState(() => localStorage.getItem(LS_AUTO) !== 'off')
       const [size, setSize] = useState(() => {
         const s = lsGet(LS_SIZE, {})
@@ -592,8 +589,7 @@ module.exports = {
 
       useEffect(() => {
         setLoved(!!card && favs.some((f) => f.id === card.id))
-        setInReview(!!card && review.some((f) => f.id === card.id))
-      }, [card, favs, review])
+      }, [card, favs])
 
       const snap = (c) => ({ id: c.id, title: c.title, subject: c.subject, grade: c.grade, summary: c.summary })
 
@@ -603,16 +599,6 @@ module.exports = {
           const has = prev.some((f) => f.id === card.id)
           const next = has ? prev.filter((f) => f.id !== card.id) : [snap(card), ...prev]
           lsSet(LS_FAVS, next)
-          return next
-        })
-      }
-
-      const toggleReview = () => {
-        if (!card) return
-        setReview((prev) => {
-          const has = prev.some((f) => f.id === card.id)
-          const next = has ? prev.filter((f) => f.id !== card.id) : [snap(card), ...prev]
-          lsSet(LS_REVIEW, next)
           return next
         })
       }
@@ -749,9 +735,7 @@ module.exports = {
           origin && React.createElement('div', { className: 'gk-origin' }, ORIGINS[origin] || '缘起'),
           panel === 'favs'
             ? listPanel(favs, LS_FAVS, setFavs, '还没有收藏，遇到重要的知识点点个 ❤ 吧')
-            : panel === 'review'
-              ? listPanel(review, LS_REVIEW, setReview, '复习清单是空的：看卡时点 📥 加入复习，掌握了再移出')
-              : panel === 'settings'
+            : panel === 'settings'
                 ? React.createElement('div', { className: 'gk-panel' },
                     React.createElement('div', { className: 'gk-setbar' },
                       React.createElement('button', {
@@ -836,7 +820,6 @@ module.exports = {
                         ? renderMd(stripOwnTitle(card.body, card.title), wikiLink)
                         : React.createElement('div', { className: 'gk-empty' }, '翻书中……')),
                     related.length > 0 && React.createElement('div', { className: 'gk-rel' },
-                      React.createElement('div', { className: 'gk-rel-t' }, '关联知识点'),
                       React.createElement('div', { className: 'gk-relrow' },
                         related.map((r) => React.createElement('button', {
                           key: r.id, className: 'gk-relchip',
@@ -853,15 +836,6 @@ module.exports = {
             React.createElement('button', { className: 'gk-btn', title: '随机抽一张', onClick: () => { setPanel('body'); draw() } }, '🎲'),
             React.createElement('button', { className: 'gk-btn', title: '上一个（浏览历史）', onClick: goPrev }, '⏮'),
             React.createElement('button', { className: 'gk-btn', title: '下一个（历史到顶则抽新卡）', onClick: goNext }, '⏭'),
-            React.createElement('button', {
-              className: 'gk-btn' + (inReview ? ' gk-on' : ''),
-              title: inReview ? '掌握了，移出复习清单' : '没记住？加入复习清单',
-              onClick: () => { setPanel('body'); toggleReview() },
-            }, inReview ? '📤' : '📥'),
-            React.createElement('button', {
-              className: 'gk-btn', title: '复习清单',
-              onClick: () => setPanel((v) => (v === 'review' ? 'body' : 'review')),
-            }, panel === 'review' ? '📖' : `📖${review.length || ''}`),
             React.createElement('button', {
               className: 'gk-btn', title: '收藏夹',
               onClick: () => setPanel((v) => (v === 'favs' ? 'body' : 'favs')),
