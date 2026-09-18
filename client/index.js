@@ -17,8 +17,8 @@ const STYLE = `
 @keyframes gk-pop{0%{transform:scale(.96) translateY(6px);opacity:0}100%{transform:scale(1) translateY(0);opacity:1}}
 .gk-root{position:fixed;right:172px;bottom:262px;z-index:1200;
   font:13px/1.75 "Kaiti SC","STKaiti","KaiTi","FangSong","Songti SC","SimSun",serif;user-select:none}
-/* ── 小黑板 ── */
-.gk-stage{cursor:grab;filter:drop-shadow(0 4px 10px rgba(0,0,0,.35))}
+/* ── 小黑板（整体大小由设置里的缩放滑杆控制，transform 等比缩放） ── */
+.gk-stage{cursor:grab;filter:drop-shadow(0 4px 10px rgba(0,0,0,.35));transform-origin:bottom right}
 .gk-stage:active{cursor:grabbing}
 .gk-root.gk-shake .gk-stage{animation:gk-shake .6s ease}
 .gk-board{position:relative;width:168px;height:112px;box-sizing:border-box;border-radius:6px;
@@ -140,9 +140,10 @@ const LS_AUTO = 'gk-auto'
 const LS_SIZE = 'gk-size'
 const LS_SUBJECTS = 'gk-subjects'
 const LS_EXAM = 'gk-exam-date'
+const LS_ZOOM = 'gk-zoom'
 
 function ensureStyle() {
-  const id = 'dsh-gaokao-style-v2'
+  const id = 'dsh-gaokao-style-v3'
   if (!document.getElementById(id)) {
     document.querySelectorAll('style[id^="dsh-gaokao-style"]').forEach((n) => n.remove())
     const tag = document.createElement('style')
@@ -322,6 +323,10 @@ module.exports = {
       const [subjectStats, setSubjectStats] = useState([])  // [[subject, count], ...]
       const [examDate, setExamDate] = useState(null)        // 服务端给定的高考日
       const [customExam, setCustomExam] = useState(() => localStorage.getItem(LS_EXAM) || '')
+      const [zoom, setZoom] = useState(() => {
+        const v = Number(localStorage.getItem(LS_ZOOM))
+        return Number.isFinite(v) && v >= 0.6 && v <= 1.5 ? v : 0.8   // 默认比原始小两号
+      })
       const [days, setDays] = useState(null)
       const [origin, setOrigin] = useState(null)
       const [fx, setFx] = useState('')
@@ -701,6 +706,19 @@ module.exports = {
                       React.createElement('span', { className: 'gk-setk' }),
                       React.createElement('span', { className: 'gk-setc' }, `${count} 张`))),
                     React.createElement('div', { className: 'gk-setdate' },
+                      React.createElement('span', null, '黑板大小'),
+                      React.createElement('input', {
+                        type: 'range', min: 60, max: 150, step: 5,
+                        value: Math.round(zoom * 100),
+                        style: { accentColor: '#2d5a8a', cursor: 'pointer' },
+                        onChange: (e) => {
+                          const v = Number(e.target.value) / 100
+                          setZoom(v)
+                          lsSet(LS_ZOOM, v)
+                        },
+                      }),
+                      React.createElement('span', { className: 'gk-setc' }, `${Math.round(zoom * 100)}%`)),
+                    React.createElement('div', { className: 'gk-setdate' },
                       React.createElement('span', null, '高考日期'),
                       React.createElement('input', {
                         type: 'text', placeholder: examDate || 'YYYY-MM-DD', defaultValue: customExam,
@@ -765,13 +783,14 @@ module.exports = {
             React.createElement('div', { className: 'gk-spacer' }))),
         React.createElement('div', {
           ref: stageRef, className: 'gk-stage',
-          title: `梦回高三 · 距离高考还有 ${daysText} 天（点击翻开知识卡，拖动换位）`,
+          title: `距离高考还有 ${daysText} 天（点击翻开知识卡，拖动换位）`,
+          style: { transform: `scale(${zoom})` },
           onMouseDown: onDown,
         },
           React.createElement('div', { className: 'gk-board' },
             React.createElement('div', { className: 'gk-bline' }, '距离高考还有'),
             React.createElement('div', { className: 'gk-bnum' + (days !== null && days <= 100 ? ' gk-bnum-red' : '') }, daysText),
-            React.createElement('div', { className: 'gk-bsub' }, '天 · 梦回高三'),
+            React.createElement('div', { className: 'gk-bsub' }, '天'),
             React.createElement('div', { className: 'gk-tray' },
               React.createElement('span', { className: 'gk-chalk' }),
               React.createElement('span', { className: 'gk-eraser' })))),
