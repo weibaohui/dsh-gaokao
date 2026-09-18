@@ -25,7 +25,7 @@ window.__ModuleLoader__.load({
     const STYLE = `
     @keyframes gk-shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-5px) rotate(-2deg)}45%{transform:translateX(4px) rotate(1.5deg)}70%{transform:translateX(-3px)}100%{transform:translateX(0)}}
     @keyframes gk-pop{0%{transform:scale(.96) translateY(6px);opacity:0}100%{transform:scale(1) translateY(0);opacity:1}}
-    .gk-root{position:fixed;right:172px;bottom:262px;z-index:1200;
+    .gk-root{position:fixed;right:172px;bottom:118px;z-index:1200;
       font:13px/1.75 "Kaiti SC","STKaiti","KaiTi","FangSong","Songti SC","SimSun",serif;user-select:none}
     /* ── 小黑板（整体大小由设置里的缩放滑杆控制，transform 等比缩放） ── */
     .gk-stage{cursor:grab;filter:drop-shadow(0 4px 10px rgba(0,0,0,.35));transform-origin:bottom right}
