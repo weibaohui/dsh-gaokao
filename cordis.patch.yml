@@ -1,0 +1,11 @@
+# dsh-gaokao bundle patch: contributes the plugin row into the
+# host composition when this package is installed via `dsh plugin add`.
+#
+# HOST-PLANE: scans Markdown knowledge cards under data/ (or config.dataDir),
+# resolves [[wikilink]] / frontmatter related links, serves the HTTP API and
+# the gaokao countdown over a webServer route; the client half registers a
+# sidebar footer action rendering the floating blackboard + knowledge card.
+
+- insert:
+    - id: dsh-gaokao
+      name: '@weibaohui/dsh-gaokao'

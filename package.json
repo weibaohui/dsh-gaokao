@@ -1,0 +1,60 @@
+{
+  "name": "@weibaohui/dsh-gaokao",
+  "version": "0.1.0",
+  "description": "dsh 插件 · 梦回高三：桌面小黑板倒计时高考，AI 干活时随机浮现知识点卡。Markdown 知识卡框架——按文件夹放 md 即自动加载，支持学科/年级/关联跳转/收藏/复习，任何人可贡献或导入自己的知识库。",
+  "license": "MIT",
+  "keywords": [
+    "cordis",
+    "plugin",
+    "gaokao",
+    "knowledge",
+    "flashcard",
+    "study"
+  ],
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./client": "./client/bundle-mc.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web"
+    }
+  },
+  "files": [
+    "src",
+    "client",
+    "data",
+    "cordis.patch.yml"
+  ],
+  "scripts": {
+    "check": "node --check src/index.js && node --check client/index.js",
+    "build:client": "node scripts/build-client.mjs",
+    "prepublishOnly": "npm run build:client && npm run check",
+    "test": "node --test test/*.test.mjs"
+  },
+  "engines": {
+    "node": ">=22.5"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/weibaohui/dsh-gaokao.git"
+  },
+  "homepage": "https://github.com/weibaohui/dsh-gaokao#readme",
+  "bugs": {
+    "url": "https://github.com/weibaohui/dsh-gaokao/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
