@@ -411,16 +411,18 @@ window.__ModuleLoader__.load({
             return p
           }
 
-          // 本地卡池：批量拉取，随机/事件都从这里出卡
+          // 本地卡池：整副洗牌式——每次拉全量（排除刚看过的 2 张避免立刻重复），
+          // 池子抽空才换下一副，保证小知识库也能每轮见遍所有卡
           const poolRef = React.useRef([])
           const refreshBundle = useCallback(async () => {
             try {
               const p = queryFor()
-              p.set('n', '30')
-              p.set('exclude', recentStore.list().join(','))
+              p.set('n', '60')
               const r = await api(`bundle?${p}`)
               if (r && r.cards && r.cards.length) {
-                poolRef.current = r.cards
+                const seen = recentStore.list().slice(0, 2)   // 只避开刚看过的 2 张
+                const deck = r.cards.filter((c) => !seen.includes(c.id))
+                poolRef.current = deck.length ? deck : r.cards
                 return true
               }
             } catch {}
@@ -448,7 +450,6 @@ window.__ModuleLoader__.load({
             if (c) { showCard(c); return }
             try {
               const p = queryFor()
-              p.set('exclude', recentStore.list().join(','))
               const r = await api(`draw?${p}`)
               if (r && r.card) showCard(r.card)
             } catch {}
