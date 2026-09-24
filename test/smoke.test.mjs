@@ -28,10 +28,10 @@ test('打包数据集可扫描加载并自动带出学科/年级', () => {
   const store = new KnowledgeStore(BUNDLED_DATA_DIR)
   const n = store.build()
   assert.ok(n >= 15, `种子知识卡应 ≥ 15，实际 ${n}`)
-  const c = store.byId('物理/高一/牛顿第一定律')
+  const c = store.byId('物理/精要/牛顿第一定律')
   assert.ok(c, '按默认 id（相对路径）应能取到卡')
   assert.equal(c.subject, '物理')
-  assert.equal(c.grade, '高一')
+  assert.equal(c.grade, '精要')
   assert.equal(c.title, '牛顿第一定律')
   assert.ok(c.summary.length > 0)
 })
@@ -39,14 +39,14 @@ test('打包数据集可扫描加载并自动带出学科/年级', () => {
 test('关联解析：frontmatter related 与正文 [[wikilink]] 都解析成真实卡片', () => {
   const store = new KnowledgeStore(BUNDLED_DATA_DIR)
   store.build()
-  const c = store.byId('物理/高一/牛顿第一定律')
+  const c = store.byId('物理/精要/牛顿第一定律')
   const ids = c.related.map((r) => r.id)
-  assert.ok(ids.includes('物理/高一/牛顿第二定律'), `related 应含牛顿第二定律，实际 ${ids}`)
+  assert.ok(ids.includes('物理/精要/牛顿第二定律'), `related 应含牛顿第二定律，实际 ${ids}`)
   // 正文里的 [[牛顿第二定律]] 也计入了，去重后不应重复
-  assert.equal(ids.filter((x) => x === '物理/高一/牛顿第二定律').length, 1)
+  assert.equal(ids.filter((x) => x === '物理/精要/牛顿第二定律').length, 1)
   // 引用不存在的卡进入 relatedMissing
-  const missing = store.cards.find((x) => x.id === '语文/高一/劝学')
-  assert.ok(missing.related.some((r) => r.id === '语文/高一/师说'), '劝学应关联师说')
+  const missing = store.cards.find((x) => x.id === '语文/精要/劝学')
+  assert.ok(missing.related.some((r) => r.id === '语文/精要/师说'), '劝学应关联师说')
 })
 
 test('随机抽取：学科过滤 + 重点学科集合 + 排除', () => {
