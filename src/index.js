@@ -103,17 +103,17 @@ function examInfo(config) {
   }
 }
 
-/** Markdown 知识卡库：递归扫描目录，构建 id/标题 双索引并解析关联。 */
+/** Markdown 知识卡库：递归扫描目录（支持多个外挂目录），构建 id/标题 双索引并解析关联。 */
 class KnowledgeStore {
-  constructor(dataDir) {
-    this.dataDir = dataDir
+  constructor(dataDirs) {
+    this.dataDirs = Array.isArray(dataDirs) ? dataDirs : [dataDirs]
     this.cards = []
     this.byIdMap = new Map()
     this.byTitle = new Map()     // 标题/文件名 → id（关联解析用）
     this.bySubject = new Map()
   }
 
-  /** 递归收集 .md 文件（跳过 README、点开头、下划线开头目录）。 */
+  /** 递归收集 .md 文件（跳过 README、点开头、下划线开头目录、精读进度跟踪）。 */
   _walk(dir, out = []) {
     let ents
     try { ents = fs.readdirSync(dir, { withFileTypes: true }) } catch { return out }
@@ -123,7 +123,7 @@ class KnowledgeStore {
       if (ent.isDirectory()) {
         if (ent.name.startsWith('_')) continue
         this._walk(p, out)
-      } else if (/\.md$/i.test(ent.name) && !/^readme(\..+)?\.md$/i.test(ent.name)) {
+      } else if (/\.md$/i.test(ent.name) && !/^readme(\..+)?\.md$/i.test(ent.name) && !/^精读进度/.test(ent.name)) {
         out.push(p)
       }
     }
@@ -131,13 +131,14 @@ class KnowledgeStore {
   }
 
   build() {
-    const files = this._walk(this.dataDir)
+    const files = []   // [绝对路径, 所属根目录]
+    for (const dir of this.dataDirs) for (const f of this._walk(dir)) files.push([f, dir])
     const cards = []
-    for (const file of files) {
+    for (const [file, rootDir] of files) {
       let src
       try { src = fs.readFileSync(file, 'utf8') } catch { continue }
       const { meta, body } = parseFrontmatter(src)
-      const rel = path.relative(this.dataDir, file).replace(/\\/g, '/').replace(/\.md$/i, '')
+      const rel = path.relative(rootDir, file).replace(/\\/g, '/').replace(/\.md$/i, '')
       const segs = rel.split('/')
       const h1 = body.match(/^#\s+(.+?)\s*$/m)
       const title = meta.title || (h1 && h1[1].trim()) || segs[segs.length - 1]
@@ -236,7 +237,8 @@ class KnowledgeStore {
       total: this.cards.length,
       subjects,
       grades,
-      dataDir: this.dataDir,
+      dataDir: this.dataDirs[0],
+      dataDirs: this.dataDirs,
       exam: examInfo(config || {}),
     }
   }
@@ -267,12 +269,13 @@ module.exports = {
   apply(ctx, rawConfig) {
     const config = rawConfig && typeof rawConfig === 'object' ? rawConfig : {}
     const dataDir = config.dataDir || BUNDLED_DATA_DIR
-    const store = new KnowledgeStore(dataDir)
+    const extraDirs = [].concat(config.extraDirs || []).filter((d) => typeof d === 'string' && d.trim())
+    const store = new KnowledgeStore([dataDir, ...extraDirs])
     try {
       const n = store.build()
-      ctx.logger?.info?.(`[dsh-gaokao] 知识卡加载完成：${n} 张（${dataDir}）`)
+      ctx.logger?.info?.(`[dsh-gaokao] 知识卡加载完成：${n} 张（主库 ${dataDir}${extraDirs.length ? ' + 外挂 ' + extraDirs.join(' , ') : ''}）`)
     } catch (err) {
-      ctx.logger?.warn?.(`[dsh-gaokao] 知识卡加载失败：${err.message}（${dataDir}）`)
+      ctx.logger?.warn?.(`[dsh-gaokao] 知识卡加载失败：${err.message}（${[dataDir, ...extraDirs].join(' , ')}）`)
     }
 
     // ── 事件联动：订阅会话事件流，AI 干活时客户端随机弹出知识点 ──────────

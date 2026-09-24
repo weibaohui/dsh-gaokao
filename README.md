@@ -44,7 +44,7 @@
 dsh plugin --profile web add @weibaohui/dsh-gaokao -w
 ```
 
-装完重启 `dsh web` 即生效。43 张种子知识卡（语数英物化生历地政 9 学科 × 高一~高三）已随包内置，无需任何配置。
+装完重启 `dsh web` 即生效。内置 43 张种子知识卡（语数英物化生历地政 9 学科 × 高一~高三）；配合 `extraDirs` 外挂数理化精读库可扩到 900+ 张，见下文「导入自己的知识库」。
 
 ## 使用
 
@@ -89,13 +89,16 @@ related: [牛顿第二定律]     # 可选，写卡片标题或 id 均可
 
 ### 导入自己的知识库
 
-插件配置里用 `dataDir` 指向你的目录（结构同上）：
+插件配置支持两种方式——`dataDir` 整体替换内置种子库，`extraDirs` **外挂追加**（种子库照常在）：
 
 ```yaml
 config:
-  dataDir: /Users/you/my-knowledge-base   # 按 学科/年级/*.md 组织
-  examDate: "2027-06-07"                   # 可选，自定义高考日期
+  dataDir: /Users/you/my-knowledge-base    # 可选：替换内置种子库
+  extraDirs:                               # 可选：外挂追加任意多个目录
+    - /Users/mac/Desktop/课本/知识点        # 例：数理化自学丛书精读产物（880+ 张）
 ```
+
+外挂目录同样是 `学科/分类/卡.md` 结构即可被自动扫描；目录里的大文件（章节总览）也会成为一张"总览卡"。改动文件后调 `GET /dsh-gaokao/api/reload` 热加载。
 
 ## 开发
 
