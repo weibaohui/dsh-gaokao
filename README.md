@@ -1,6 +1,6 @@
 # @weibaohui/dsh-gaokao
 
-> **⚠️ 知识产权说明**：公开包只含框架代码与 43 张原创种子卡（公共领域事实与古代原典的原创总结）。从受著作权保护的教材/丛书精读提取的知识卡**不随包发布**，请用 `extraDirs` 在本机本地加载，仅作个人研究学习使用；导入时保留出处信息。
+> **⚠️ 知识产权说明**：知识卡内容为通用高中课程知识点（事实/公式/定义/性质）的原创表述，不含来源出处、教材原文或例题。任何人可贡献自己的知识卡，导入时请确保内容为原创或公共领域。
 
 [![DSH plugin](https://img.shields.io/badge/dsh-plugin-green)](https://github.com/topics/dsh-plugin)
 [![npm version](https://img.shields.io/npm/v/@weibaohui/dsh-gaokao)](https://www.npmjs.com/package/@weibaohui/dsh-gaokao)
@@ -45,7 +45,7 @@
 dsh plugin --profile web add @weibaohui/dsh-gaokao -w
 ```
 
-装完重启 `dsh web` 即生效。公开包只含**框架代码 + 43 张原创种子知识卡**（语数英物化生历地政，知识点事实与公有领域原典的原创总结）；用 `extraDirs` 外挂自己的知识库即可扩到任意规模，见下文「导入自己的知识库」。
+装完重启 `dsh web` 即生效。内置 **1109 张知识卡**（9 学科：数学 396、物理 402、化学 289，语数英物化生历地政齐全），无需任何配置。
 
 ## 使用
 
