@@ -1,6 +1,6 @@
 {
   "name": "@weibaohui/dsh-gaokao",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "dsh 插件 · 梦回高三：桌面小黑板倒计时高考，AI 干活时随机浮现知识点卡。Markdown 知识卡框架——按文件夹放 md 即自动加载，支持学科/年级/关联跳转/收藏/复习，任何人可贡献或导入自己的知识库。",
   "license": "MIT",
   "keywords": [
