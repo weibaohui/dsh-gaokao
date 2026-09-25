@@ -95,6 +95,7 @@ const STYLE = `
 /* 关联知识点 chips */
 /* 关联知识点 chips（无背景蒙层，仅顶部分隔线） */
 .gk-rel{padding:6px 20px 8px 46px;flex-shrink:0;border-top:1px dashed #c3cdd9}
+.gk-source{padding:2px 20px 4px 46px;font-size:10.5px;color:#9aa7b6;letter-spacing:.5px;flex-shrink:0}
 .gk-relrow{display:flex;flex-wrap:wrap;gap:5px;max-height:64px;overflow-y:auto;scrollbar-width:thin}
 .gk-relchip{font-size:11.5px;color:#2d5a8a;background:#fff;border:1px solid #b8cbe0;border-radius:10px;
   padding:1px 9px;cursor:pointer;font-family:inherit;letter-spacing:.5px}
@@ -894,6 +895,7 @@ module.exports = {
                       card
                         ? renderMd(stripOwnTitle(card.body, card.title), wikiLink)
                         : React.createElement('div', { className: 'gk-empty' }, '翻书中……')),
+                    card && card.source && React.createElement('div', { className: 'gk-source' }, '出处：' + card.source),
                     related.length > 0 && React.createElement('div', { className: 'gk-rel' },
                       React.createElement('div', { className: 'gk-relrow' },
                         related.map((r) => React.createElement('button', {

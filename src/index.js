@@ -167,6 +167,7 @@ class KnowledgeStore {
         summary,
         body,
         relatedRaw,
+        source: meta.出处 || meta.source || '',
       })
     }
     // id 去重（撞名加序号）
@@ -257,6 +258,7 @@ function cardPayload(c) {
     body: c.body,
     related: c.related,
     relatedMissing: c.relatedMissing,
+    source: c.source,
   }
 }
 
