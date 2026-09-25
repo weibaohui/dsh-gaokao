@@ -332,6 +332,18 @@ module.exports = {
       res.end(JSON.stringify(payload))
     }
 
+    /** 读取 POST 请求体（上限 32MB）。 */
+    const readBody = (req) => new Promise((resolve) => {
+      const chunks = []
+      let size = 0
+      req.on('data', (c) => {
+        size += c.length
+        if (size <= 32 * 1024 * 1024) chunks.push(c)
+      })
+      req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')))
+      req.on('error', () => resolve(''))
+    })
+
     const subjectsParam = (url) => {
       const set = new Set((url.searchParams.get('subjects') || '').split(',').map((s) => s.trim()).filter(Boolean))
       return set.size ? set : undefined
@@ -344,6 +356,29 @@ module.exports = {
         try {
           const url = new URL(req.url || '/', 'http://dsh.local')
           const p = url.pathname.replace(/\/+$/, '')
+          if (req.method === 'POST' && p.endsWith('/import')) {
+            // 从浏览器导入知识卡：{files:[{path,content}]}，路径净化后并入内置库，同名跳过
+            let body
+            try { body = JSON.parse(await readBody(req) || '{}') } catch { sendJson(res, 400, { error: 'invalid json' }); return }
+            const files = Array.isArray(body.files) ? body.files.slice(0, 800) : []
+            let imported = 0, skipped = 0
+            for (const f of files) {
+              let rel = String(f && f.path || '').replace(/\\/g, '/')
+              rel = rel.split('/').filter((seg) => seg && seg !== '.' && seg !== '..' && !seg.startsWith('.')).join('/')
+              if (!rel || !/\.md$/i.test(rel) || /^readme(\..+)?\.md$/i.test(path.basename(rel))) continue
+              const dst = path.join(BUNDLED_DATA_DIR, rel)
+              if (fs.existsSync(dst)) { skipped++; continue }
+              try {
+                fs.mkdirSync(path.dirname(dst), { recursive: true })
+                fs.writeFileSync(dst, String(f.content || ''), 'utf8')
+                imported++
+              } catch { skipped++ }
+            }
+            const n = store.build()
+            ctx.logger?.info?.(`[dsh-gaokao] 浏览器导入完成：+${imported} 跳过 ${skipped}，现 ${n} 张`)
+            sendJson(res, 200, { imported, skipped, total: n })
+            return
+          }
           if (req.method === 'GET' && p.endsWith('/draw')) {
             if (!store.cards.length) { sendJson(res, 503, { error: '知识卡为空' }); return }
             const exclude = (url.searchParams.get('exclude') || '').split(',').filter(Boolean)

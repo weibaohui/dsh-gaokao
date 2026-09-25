@@ -369,6 +369,46 @@ module.exports = {
         const v = lsGet(LS_GRID, '横线')
         return GRID_STYLES.includes(v) ? v : '横线'
       })
+      const [importMsg, setImportMsg] = useState('')
+      const importInputRef = React.useRef(undefined)
+      const subjectStatsRef = React.useRef(subjectStats)
+      subjectStatsRef.current = subjectStats
+
+      /** 浏览器文件夹导入：读 .md → POST /api/import（首批目录段若非已知学科则剥掉） */
+      const importFiles = async (fileList) => {
+        const files = [...fileList].filter((f) => /\.md$/i.test(f.name) && !/^readme/i.test(f.name))
+        if (!files.length) { setImportMsg('所选位置没有 .md 文件'); return }
+        setImportMsg(`导入中 0/${files.length}…`)
+        let imported = 0, skipped = 0
+        for (let i = 0; i < files.length; i += 10) {
+          const payload = []
+          for (const f of files.slice(i, i + 10)) {
+            let rel = (f.webkitRelativePath || f.name).replace(/\\/g, '/')
+            const segs = rel.split('/')
+            if (segs.length > 1 && !subjectStatsRef.current.some(([s]) => s === segs[0])) rel = segs.slice(1).join('/')
+            try {
+              payload.push({ path: rel, content: await f.text() })
+            } catch {}
+          }
+          try {
+            const r = await api('import', {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ files: payload }),
+            })
+            imported += r.imported || 0
+            skipped += r.skipped || 0
+          } catch {}
+          setImportMsg(`导入中 ${Math.min(i + 10, files.length)}/${files.length}…`)
+        }
+        setImportMsg(`已导入 ${imported} 张${skipped ? `，跳过同名 ${skipped} 张` : ''}`)
+        try {
+          const s = await api('status')
+          setSubjectStats(Object.entries(s.subjects || {}).sort((a, b) => b[1] - a[1]))
+        } catch {}
+        poolRef.current = []
+        refreshBundle()
+      }
       const [days, setDays] = useState(null)
       const [origin, setOrigin] = useState(null)
       const [fx, setFx] = useState('')
@@ -779,6 +819,23 @@ module.exports = {
                         }, g))),
                       React.createElement('span', { className: 'gk-setc' })),
                     React.createElement('div', { className: 'gk-setdate' },
+                      React.createElement('span', null, '导入知识卡'),
+                      React.createElement('button', {
+                        className: 'gk-chipx', style: { cursor: 'pointer' },
+                        onClick: () => importInputRef.current && importInputRef.current.click(),
+                      }, '选择文件夹'),
+                      React.createElement('input', {
+                        ref: importInputRef,
+                        type: 'file', multiple: true, webkitdirectory: 'true', directory: 'true',
+                        style: { display: 'none' },
+                        onChange: (e) => {
+                          const fl = e.target.files
+                          if (fl && fl.length) importFiles(fl)
+                          e.target.value = ''
+                        },
+                      }),
+                      React.createElement('span', { className: 'gk-setc' }, importMsg || 'md 按 学科/分类 归档')),
+                    React.createElement('div', { className: 'gk-setdate' },
                       React.createElement('span', null, '黑板大小'),
                       React.createElement('input', {
                         type: 'range', min: 30, max: 150, step: 5,
@@ -854,6 +911,10 @@ module.exports = {
               title: '设置：重点学科 / 高考日期',
               onClick: () => setPanel((v) => (v === 'settings' ? 'body' : 'settings')),
             }, '⚙'),
+            React.createElement('button', {
+              className: 'gk-btn', title: '提建议 / 报问题（GitHub Issues）',
+              onClick: () => window.open('https://github.com/weibaohui/dsh-gaokao/issues/new', '_blank'),
+            }, '💬'),
             React.createElement('div', { className: 'gk-spacer' }))),
         React.createElement('div', {
           ref: stageRef, className: 'gk-stage',
