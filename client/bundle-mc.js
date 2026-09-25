@@ -66,8 +66,7 @@ window.__ModuleLoader__.load({
     .gk-card.gk-below{bottom:auto;top:calc(100% + 18px)}
     .gk-card::before{content:"";position:absolute;top:0;bottom:0;left:34px;width:1.5px;background:rgba(226,110,100,.45);pointer-events:none}
     /* 顶部 */
-    .gk-head{display:flex;align-items:center;gap:9px;padding:12px 14px 8px 44px;flex-shrink:0;
-      background:linear-gradient(#fdfcf7,rgba(253,252,247,0))}
+    .gk-head{display:flex;align-items:center;gap:9px;padding:12px 14px 8px 44px;flex-shrink:0}
     .gk-chip{flex-shrink:0;font-size:11px;border-radius:4px;padding:2px 8px;color:#fff;letter-spacing:2px;
       box-shadow:0 1px 3px rgba(0,0,0,.25)}
     .gk-grade{flex-shrink:0;font-size:11px;color:#7a8aa0;border:1px solid #c3cdd9;border-radius:9px;padding:1px 8px;letter-spacing:1px}
@@ -84,12 +83,12 @@ window.__ModuleLoader__.load({
     .gk-origin::before{content:"✎";font-size:12px}
     /* 正文 */
     .gk-body{flex:1;min-height:0;overflow-y:auto;padding:6px 20px 10px 46px;scrollbar-width:thin;scrollbar-color:#b9c4d2 transparent;
-      font-size:13.5px;line-height:28px}
-    .gk-body h1,.gk-body h2,.gk-body h3,.gk-body h4{margin:10px 0 2px;line-height:28px;color:#1f3a5f;letter-spacing:1px}
-    .gk-body h1{font-size:17px;border-bottom:2px solid #7fa3c8;padding-bottom:2px}
-    .gk-body h2{font-size:15.5px;border-bottom:1px dashed #a9bdcf;padding-bottom:2px}
-    .gk-body h3{font-size:14px;color:#2d5a8a}
-    .gk-body h4{font-size:13.5px;color:#3c6b9c}
+      font-size:14px;line-height:22px}
+    .gk-body h1,.gk-body h2,.gk-body h3,.gk-body h4{margin:8px 0 2px;line-height:22px;color:#1f3a5f;letter-spacing:1px}
+    .gk-body h1{font-size:1.25em;border-bottom:2px solid #7fa3c8;padding-bottom:2px}
+    .gk-body h2{font-size:1.12em;border-bottom:1px dashed #a9bdcf;padding-bottom:2px}
+    .gk-body h3{font-size:1em;color:#2d5a8a}
+    .gk-body h4{font-size:0.95em;color:#3c6b9c}
     .gk-body p{margin:0}
     .gk-body ul,.gk-body ol{margin:0;padding-left:22px}
     .gk-body code{background:rgba(63,110,160,.1);border:1px solid rgba(63,110,160,.18);border-radius:4px;
@@ -104,8 +103,8 @@ window.__ModuleLoader__.load({
     .gk-wiki:hover{background:rgba(45,111,210,.12)}
     .gk-wiki.gk-wiki-miss{color:#a3aebc;border-bottom-color:rgba(163,174,188,.5);cursor:default;text-decoration:line-through}
     /* 关联知识点 chips */
-    /* 关联知识点 chips（半透明浮层，无标题） */
-    .gk-rel{padding:6px 20px 8px 46px;flex-shrink:0;border-top:1px dashed #c3cdd9;background:rgba(255,255,255,.42)}
+    /* 关联知识点 chips（无背景蒙层，仅顶部分隔线） */
+    .gk-rel{padding:6px 20px 8px 46px;flex-shrink:0;border-top:1px dashed #c3cdd9}
     .gk-relrow{display:flex;flex-wrap:wrap;gap:5px;max-height:64px;overflow-y:auto;scrollbar-width:thin}
     .gk-relchip{font-size:11.5px;color:#2d5a8a;background:#fff;border:1px solid #b8cbe0;border-radius:10px;
       padding:1px 9px;cursor:pointer;font-family:inherit;letter-spacing:.5px}
@@ -163,6 +162,7 @@ window.__ModuleLoader__.load({
     const LS_FORM = 'gk-form'
     const LS_PAPER = 'gk-paper'
     const LS_GRID = 'gk-grid'
+    const LS_FONT = 'gk-font'
 
     function ensureStyle() {
       const id = 'dsh-gaokao-style-v4'
@@ -191,10 +191,10 @@ window.__ModuleLoader__.load({
     const GRID_STYLES = ['横线', '方格', '点阵', '空白']
     const GRID_LINE = 'rgba(90,120,150,.18)'
 
-    /** 练习本背景：底色 + 格线（行高 28px 与正文行高一致） */
+    /** 练习本背景：底色 + 格线（行高 22px 与正文行高一致，加密版） */
     function paperBackground(color, grid) {
-      const h = `repeating-linear-gradient(to bottom, transparent 0, transparent 27px, ${GRID_LINE} 27px, ${GRID_LINE} 28px)`
-      const v = `repeating-linear-gradient(to right, transparent 0, transparent 27px, ${GRID_LINE} 27px, ${GRID_LINE} 28px)`
+      const h = `repeating-linear-gradient(to bottom, transparent 0, transparent 21px, ${GRID_LINE} 21px, ${GRID_LINE} 22px)`
+      const v = `repeating-linear-gradient(to right, transparent 0, transparent 21px, ${GRID_LINE} 21px, ${GRID_LINE} 22px)`
       const image = grid === '横线' ? h
         : grid === '方格' ? `${h}, ${v}`
         : grid === '点阵' ? 'radial-gradient(circle, rgba(90,120,150,.32) 1.3px, transparent 1.6px)'
@@ -202,7 +202,7 @@ window.__ModuleLoader__.load({
       return {
         backgroundColor: color,
         backgroundImage: image,
-        backgroundSize: grid === '点阵' ? '28px 28px' : undefined,
+        backgroundSize: grid === '点阵' ? '22px 22px' : undefined,
       }
     }
 
@@ -378,6 +378,10 @@ window.__ModuleLoader__.load({
           const [grid, setGrid] = useState(() => {
             const v = lsGet(LS_GRID, '横线')
             return GRID_STYLES.includes(v) ? v : '横线'
+          })
+          const [fontPx, setFontPx] = useState(() => {
+            const v = Number(lsGet(LS_FONT, 14))
+            return Number.isFinite(v) && v >= 12 && v <= 20 ? v : 14
           })
           const [importMsg, setImportMsg] = useState('')
           const importInputRef = React.useRef(undefined)
@@ -829,6 +833,19 @@ window.__ModuleLoader__.load({
                             }, g))),
                           React.createElement('span', { className: 'gk-setc' })),
                         React.createElement('div', { className: 'gk-setdate' },
+                          React.createElement('span', null, '正文字号'),
+                          React.createElement('input', {
+                            type: 'range', min: 12, max: 20, step: 1,
+                            value: fontPx,
+                            style: { accentColor: '#2d5a8a', cursor: 'pointer' },
+                            onChange: (e) => {
+                              const v = Number(e.target.value)
+                              setFontPx(v)
+                              lsSet(LS_FONT, v)
+                            },
+                          }),
+                          React.createElement('span', { className: 'gk-setc' }, `${fontPx}px`)),
+                        React.createElement('div', { className: 'gk-setdate' },
                           React.createElement('span', null, '导入知识卡'),
                           React.createElement('button', {
                             className: 'gk-chipx', style: { cursor: 'pointer' },
@@ -883,7 +900,7 @@ window.__ModuleLoader__.load({
                           }),
                           React.createElement('span', { className: 'gk-setc', style: { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, '留空=自动取下一届6/7')))
                     : React.createElement(React.Fragment, null,
-                        React.createElement('div', { className: 'gk-body' },
+                        React.createElement('div', { className: 'gk-body', style: { fontSize: `${fontPx}px`, lineHeight: '22px' } },
                           card
                             ? renderMd(stripOwnTitle(card.body, card.title), wikiLink)
                             : React.createElement('div', { className: 'gk-empty' }, '翻书中……')),
