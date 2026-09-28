@@ -41,23 +41,37 @@ window.__ModuleLoader__.load({
     .gk-bnum.gk-bnum-red{color:#e88d7c}
     .gk-bsub{color:#d8c07a;font-size:11.5px;letter-spacing:3px;opacity:.9}
     /* ── mini 跑马灯模式：页顶/页底横条，知识点滚动（类似歌词条） ── */
-    .gk-mini-root{position:fixed !important;right:auto !important;bottom:auto !important;left:0 !important;top:auto !important;
-      width:100% !important;height:38px !important;z-index:1200}
+    /* 挂载方案对齐知识库 dsh-kb：容器 div 追加为会话列末尾子节点，宽度=列宽，
+       由浏览器布局自动跟随侧栏折叠/展开，不做 JS 测宽。html[data-gk-mini] 仅在
+       mini 模式生效，把会话列设为定位基准（三代壳层选择器与 dsh-kb 同源）。 */
+    html[data-gk-mini] [data-pane="conversation"],html[data-gk-mini] [class*="centerCol"],
+    html[data-gk-mini] .dshDesktopConversationSurface{position:relative}
+    .gk-mini-slot{position:absolute;left:0;right:0;height:38px;z-index:1200;pointer-events:none}
+    .gk-mini-slot > *{pointer-events:auto}
+    .gk-mini-slot.gk-mini-top{top:0}
+    .gk-mini-slot.gk-mini-bottom{bottom:0}
+    /* 兜底：宿主缺 react-dom.createPortal 时退回视口级 fixed 横条 */
+    .gk-mini-root{position:fixed !important;left:0 !important;right:0 !important;bottom:auto !important;top:auto !important;
+      height:38px !important;z-index:1200}
     .gk-mini-root.gk-mini-top{top:0 !important}
     .gk-mini-root.gk-mini-bottom{bottom:0 !important}
     .gk-mini{display:flex;align-items:center;gap:8px;height:38px;box-sizing:border-box;padding:0 10px;
-      background:rgba(29,53,46,.92);backdrop-filter:blur(6px);cursor:pointer;user-select:none;
-      border-top:1px solid #123028}
-    .gk-mini-root.gk-mini-top .gk-mini{border-top:none;border-bottom:1px solid #123028}
+      background:var(--gk-mini-bg,rgba(29,53,46,.92));backdrop-filter:blur(6px);cursor:pointer;user-select:none;
+      border-top:1px solid rgba(0,0,0,.14)}
+    .gk-mini-top .gk-mini{border-top:none;border-bottom:1px solid rgba(0,0,0,.14)}
     .gk-mini-icon{flex-shrink:0;font-size:14px;line-height:1}
     .gk-mini-track{flex:1;min-width:0;overflow:hidden;white-space:nowrap}
-    .gk-mini-text{display:inline-block;white-space:nowrap;color:#e8e4d5;font-size:12.5px;letter-spacing:.4px;
+    .gk-mini-text{display:inline-block;white-space:nowrap;color:var(--gk-mini-fg,#e8e4d5);font-size:12.5px;letter-spacing:.4px;
       padding-left:100%;animation:gk-marquee linear infinite;
       font-family:"Kaiti SC","STKaiti","KaiTi","FangSong","Songti SC","SimSun",serif}
     @keyframes gk-marquee{from{transform:translateX(0)}to{transform:translateX(-100%)}}
-    .gk-mini-close{flex-shrink:0;border:none;background:transparent;color:#8a9b90;font-size:13px;cursor:pointer;line-height:1;padding:2px 4px}
-    .gk-mini-close:hover{color:#fff}
-    .gk-root.gk-shake .gk-mini{animation:none}
+    .gk-mini-close{flex-shrink:0;border:none;background:transparent;color:var(--gk-mini-dim,#8a9b90);font-size:13px;cursor:pointer;line-height:1;padding:2px 4px}
+    .gk-mini-close:hover{color:var(--gk-mini-fg,#fff)}
+    /* mini 模式下知识卡也收进会话列：不超出列宽（列 overflow:hidden 会裁掉外溢），
+       展开方向仍由空间自适应决定 */
+    .gk-mini-slot .gk-card,.gk-mini-root .gk-card{max-width:calc(100% - 16px)}
+    .gk-mini-slot .gk-card{right:8px;left:auto}
+    .gk-mini-slot .gk-card.gk-align-left{left:8px;right:auto}
     .gk-tray{position:absolute;left:6px;right:6px;bottom:-8px;height:8px;border-radius:0 0 4px 4px;
       background:#6b4a28;display:flex;align-items:center;gap:6px;padding:0 10px}
     .gk-chalk{width:22px;height:4px;border-radius:2px;background:#f0ede2}
@@ -356,6 +370,9 @@ window.__ModuleLoader__.load({
         ensureStyle()
         const React = require('react')
         const { useState, useEffect, useCallback } = React
+        // mini 条用 react-dom portal 渲染进会话列插槽（知识库 dsh-kb 同款宿主能力）
+        let portal = null
+        try { portal = require('react-dom').createPortal || null } catch {}
 
         const api = (p) => fetch(`/dsh-gaokao/api/${p}`).then((r) => r.json())
 
@@ -397,6 +414,7 @@ window.__ModuleLoader__.load({
             return v === 'strip' || v === 'mini' ? v : 'board'
           })
           const [minipos, setMinipos] = useState(() => (lsGet(LS_MINIPOS, 'bottom') === 'top' ? 'top' : 'bottom'))
+          const [slotEl, setSlotEl] = useState(null)   // mini 条插槽：会话列末尾子节点
           const [paper, setPaper] = useState(() => {
             const v = lsGet(LS_PAPER, '豆沙绿')
             return PAPER_COLORS.some(([n]) => n === v) ? v : '豆沙绿'
@@ -583,6 +601,43 @@ window.__ModuleLoader__.load({
             const iv = setInterval(() => { draw() }, 45000)
             return () => clearInterval(iv)
           }, [form, draw])
+
+          // ── mini 条挂载（知识库 dsh-kb 同款思路）：容器 div 追加为会话列末尾子节点，
+          //    React 壳层不管理它；宽度=列宽由浏览器布局自动给定，侧栏折叠即跟随。
+          //    有意不用 MutationObserver 热响应——它与壳层重渲染互相触发会形成微任务级
+          //    自旋（实测卡死页面），幂等的定时补位已足够覆盖晚挂载与意外移除 ──
+          useEffect(() => {
+            if (form !== 'mini') { setSlotEl(null); return }
+            const COLUMN = '[data-pane="conversation"], [class*="centerCol"], .dshDesktopConversationSurface'
+            let slot = null
+            const place = () => {
+              if (slot && slot.isConnected) return
+              const column = document.querySelector(COLUMN)
+              if (!column) return
+              try { if (slot) slot.remove() } catch {}
+              slot = document.createElement('div')
+              slot.className = 'gk-mini-slot' + (minipos === 'top' ? ' gk-mini-top' : ' gk-mini-bottom')
+              column.appendChild(slot)
+              setSlotEl(slot)
+            }
+            place()
+            const timers = [200, 600, 1500].map((ms) => setTimeout(place, ms))
+            const retry = setInterval(place, 2000)
+            return () => {
+              timers.forEach(clearTimeout)
+              clearInterval(retry)
+              try { if (slot) slot.remove() } catch {}
+              setSlotEl(null)
+            }
+          }, [form, minipos])
+
+          // mini 模式期间把 html[data-gk-mini] 置位：CSS 借此把会话列设为定位基准
+          useEffect(() => {
+            const root = document.documentElement
+            if (form === 'mini') root.setAttribute('data-gk-mini', '')
+            else root.removeAttribute('data-gk-mini')
+            return () => root.removeAttribute('data-gk-mini')
+          }, [form])
 
           // ── 事件联动：仅在联动开启且页面可见时轮询（30s 一轮），关闭零请求 ──
           useEffect(() => {
@@ -801,12 +856,11 @@ window.__ModuleLoader__.load({
             ? `📖 ${card.subject}·${card.grade} ｜ ${card.title} ｜ ${card.summary || ''}`
             : '距离高考还有 ' + daysText + ' 天 · 梦回高三（点击翻开知识卡）'
           const miniDur = Math.max(18, Math.round(miniText.length * 0.42)) + 's'
+          // mini 条配色跟随纸张底色（护眼色都是浅色 → 深字）
+          const miniBg = PAPER_COLORS.find(([n]) => n === paper)[1]
+          const miniVars = { '--gk-mini-bg': miniBg, '--gk-mini-fg': '#2c3a4a', '--gk-mini-dim': '#5a6b80' }
 
-          return React.createElement('div', {
-            className: 'gk-root' + (fx ? ' ' + fx : '') + (form === 'mini' ? ' gk-mini-root' + (minipos === 'top' ? ' gk-mini-top' : ' gk-mini-bottom') : ''),
-            style: pos ? { right: 'auto', bottom: 'auto', left: pos.x, top: pos.y } : undefined,
-          },
-            open && React.createElement('div', {
+          const cardNode = open && React.createElement('div', {
               ref: cardRef,
               className: cardCls,
               style: { width: size.w, height: size.h, maxHeight: cardMaxH || undefined, ...paperBackground(PAPER_COLORS.find(([n]) => n === paper)[1], grid) },
@@ -999,11 +1053,12 @@ window.__ModuleLoader__.load({
                   className: 'gk-btn', title: '提建议 / 报问题（GitHub Issues）',
                   onClick: () => window.open('https://github.com/weibaohui/dsh-gaokao/issues/new', '_blank'),
                 }, '💬'),
-                React.createElement('div', { className: 'gk-spacer' }))),
-            form === 'mini'
-              ? React.createElement('div', {
+                React.createElement('div', { className: 'gk-spacer' })))
+          // mini 条：portal 进会话列插槽（宽度=列宽），黑板/竖条保持视口浮动
+          const barNode = React.createElement('div', {
                   ref: stageRef, className: 'gk-mini',
                   title: '点击翻开知识卡',
+                  style: miniVars,
                   onClick: () => { shake(); setOrigin(null); setOpen((v) => !v) },
                 },
                   React.createElement('span', { className: 'gk-mini-icon' }, '📖'),
@@ -1017,7 +1072,7 @@ window.__ModuleLoader__.load({
                     className: 'gk-mini-close', title: '退出 mini 模式',
                     onClick: (e) => { e.stopPropagation(); setForm('board'); lsSet(LS_FORM, 'board') },
                   }, '✕'))
-              : React.createElement('div', {
+          const stageNode = React.createElement('div', {
               ref: stageRef, className: 'gk-stage',
               title: form === 'board'
                 ? `距离高考还有 ${daysText} 天（点击抽背，双击收成竖条）`
@@ -1035,8 +1090,20 @@ window.__ModuleLoader__.load({
                       React.createElement('span', { className: 'gk-eraser' })))
                 : React.createElement('div', { className: 'gk-strip' },
                     React.createElement('span', { className: 'gk-snum' + (days !== null && days <= 100 ? ' gk-snum-red' : '') }, daysText),
-                    React.createElement('span', { className: 'gk-stray' }))),
-          )
+                    React.createElement('span', { className: 'gk-stray' })))
+          if (form === 'mini') {
+            // 主路径：portal 进会话列插槽，宽度=列宽、侧栏折叠自动跟随；
+            // 兜底（宿主缺 createPortal）：视口级 fixed 横条
+            return portal && slotEl
+              ? portal(React.createElement(React.Fragment, null, cardNode, barNode), slotEl)
+              : React.createElement('div', {
+                  className: 'gk-root gk-mini-root' + (minipos === 'top' ? ' gk-mini-top' : ' gk-mini-bottom'),
+                }, cardNode, barNode)
+          }
+          return React.createElement('div', {
+            className: 'gk-root' + (fx ? ' ' + fx : ''),
+            style: pos ? { right: 'auto', bottom: 'auto', left: pos.x, top: pos.y } : undefined,
+          }, cardNode, stageNode)
         }
 
         slots.inject('sidebar.footer.action', () => slots.register(
