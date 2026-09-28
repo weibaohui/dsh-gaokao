@@ -30,6 +30,24 @@ const STYLE = `
 .gk-bnum{color:#faf8f0;font-size:37px;font-weight:700;line-height:1.05;letter-spacing:1px}
 .gk-bnum.gk-bnum-red{color:#e88d7c}
 .gk-bsub{color:#d8c07a;font-size:11.5px;letter-spacing:3px;opacity:.9}
+/* ── mini 跑马灯模式：页顶/页底横条，知识点滚动（类似歌词条） ── */
+.gk-mini-root{position:fixed !important;right:auto !important;bottom:auto !important;left:0 !important;top:auto !important;
+  width:100% !important;height:38px !important;z-index:1200}
+.gk-mini-root.gk-mini-top{top:0 !important}
+.gk-mini-root.gk-mini-bottom{bottom:0 !important}
+.gk-mini{display:flex;align-items:center;gap:8px;height:38px;box-sizing:border-box;padding:0 10px;
+  background:rgba(29,53,46,.92);backdrop-filter:blur(6px);cursor:pointer;user-select:none;
+  border-top:1px solid #123028}
+.gk-mini-root.gk-mini-top .gk-mini{border-top:none;border-bottom:1px solid #123028}
+.gk-mini-icon{flex-shrink:0;font-size:14px;line-height:1}
+.gk-mini-track{flex:1;min-width:0;overflow:hidden;white-space:nowrap}
+.gk-mini-text{display:inline-block;white-space:nowrap;color:#e8e4d5;font-size:12.5px;letter-spacing:.4px;
+  padding-left:100%;animation:gk-marquee linear infinite;
+  font-family:"Kaiti SC","STKaiti","KaiTi","FangSong","Songti SC","SimSun",serif}
+@keyframes gk-marquee{from{transform:translateX(0)}to{transform:translateX(-100%)}}
+.gk-mini-close{flex-shrink:0;border:none;background:transparent;color:#8a9b90;font-size:13px;cursor:pointer;line-height:1;padding:2px 4px}
+.gk-mini-close:hover{color:#fff}
+.gk-root.gk-shake .gk-mini{animation:none}
 .gk-tray{position:absolute;left:6px;right:6px;bottom:-8px;height:8px;border-radius:0 0 4px 4px;
   background:#6b4a28;display:flex;align-items:center;gap:6px;padding:0 10px}
 .gk-chalk{width:22px;height:4px;border-radius:2px;background:#f0ede2}
@@ -56,13 +74,15 @@ const STYLE = `
 .gk-card.gk-below{bottom:auto;top:calc(100% + 18px)}
 .gk-card::before{content:"";position:absolute;top:0;bottom:0;left:34px;width:1.5px;background:rgba(226,110,100,.45);pointer-events:none}
 /* 顶部 */
-.gk-head{display:flex;align-items:center;gap:9px;padding:12px 14px 8px 44px;flex-shrink:0}
-.gk-chip{flex-shrink:0;font-size:11px;border-radius:4px;padding:2px 8px;color:#fff;letter-spacing:2px;
-  box-shadow:0 1px 3px rgba(0,0,0,.25)}
-.gk-grade{flex-shrink:0;font-size:11px;color:#7a8aa0;border:1px solid #c3cdd9;border-radius:9px;padding:1px 8px;letter-spacing:1px}
-.gk-htext{flex:1;min-width:0}
+/* 卡头：学科/分类章在标题上方一行（缩小不占标题宽度），标题占满整行 */
+.gk-head{display:flex;flex-direction:column;gap:4px;padding:10px 14px 6px 44px;flex-shrink:0}
+.gk-headrow{display:flex;align-items:center;gap:7px}
+.gk-headspacer{flex:1}
+.gk-chip{flex-shrink:0;font-size:10px;border-radius:4px;padding:1px 6px;color:#fff;letter-spacing:1.5px;
+  box-shadow:0 1px 2px rgba(0,0,0,.2);line-height:1.6}
+.gk-grade{flex-shrink:0;font-size:10px;color:#7a8aa0;border:1px solid #c3cdd9;border-radius:8px;padding:0 6px;letter-spacing:1px;line-height:1.6}
 .gk-title{font-size:18.5px;font-weight:700;color:#24313f;letter-spacing:1px;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3}
 .gk-sub{font-size:11px;color:#8b98a9;letter-spacing:.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gk-days{flex-shrink:0;text-align:center;font-size:10.5px;color:#b3563e;border:1px dashed rgba(179,86,62,.5);
   border-radius:6px;padding:3px 7px;line-height:1.4;background:rgba(253,252,247,.8)}
@@ -151,6 +171,7 @@ const LS_SUBJECTS = 'gk-subjects'
 const LS_EXAM = 'gk-exam-date'
 const LS_ZOOM = 'gk-zoom'
 const LS_FORM = 'gk-form'
+const LS_MINIPOS = 'gk-minipos'
 const LS_PAPER = 'gk-paper'
 const LS_GRID = 'gk-grid'
 const LS_FONT = 'gk-font'
@@ -361,7 +382,11 @@ module.exports = {
         const v = Number(localStorage.getItem(LS_ZOOM))
         return Number.isFinite(v) && v >= 0.3 && v <= 1.5 ? v : 0.6   // 默认 60%，最小 30%
       })
-      const [form, setForm] = useState(() => (lsGet(LS_FORM, 'board') === 'strip' ? 'strip' : 'board'))
+      const [form, setForm] = useState(() => {
+        const v = lsGet(LS_FORM, 'board')
+        return v === 'strip' || v === 'mini' ? v : 'board'
+      })
+      const [minipos, setMinipos] = useState(() => (lsGet(LS_MINIPOS, 'bottom') === 'top' ? 'top' : 'bottom'))
       const [paper, setPaper] = useState(() => {
         const v = lsGet(LS_PAPER, '豆沙绿')
         return PAPER_COLORS.some(([n]) => n === v) ? v : '豆沙绿'
@@ -540,6 +565,14 @@ module.exports = {
       }, [customExam, examDate])
 
       useEffect(() => { if (open && !card) draw() }, [open])
+
+      // ── mini 模式：进入时抽一张，之后每 45s 轮换一张（不打扰，只在后台换）──
+      useEffect(() => {
+        if (form !== 'mini') return
+        if (!card) draw()
+        const iv = setInterval(() => { draw() }, 45000)
+        return () => clearInterval(iv)
+      }, [form, draw])
 
       // ── 事件联动：仅在联动开启且页面可见时轮询（30s 一轮），关闭零请求 ──
       useEffect(() => {
@@ -753,8 +786,14 @@ module.exports = {
       const cardCls = 'gk-card' + (below ? ' gk-below' : '') + (alignLeft ? ' gk-align-left' : '')
       const daysText = days === null ? '—' : String(days)
 
+      // ── mini 模式的滚动文本与轮换时长 ──
+      const miniText = card
+        ? `📖 ${card.subject}·${card.grade} ｜ ${card.title} ｜ ${card.summary || ''}`
+        : '距离高考还有 ' + daysText + ' 天 · 梦回高三（点击翻开知识卡）'
+      const miniDur = Math.max(18, Math.round(miniText.length * 0.42)) + 's'
+
       return React.createElement('div', {
-        className: 'gk-root' + (fx ? ' ' + fx : ''),
+        className: 'gk-root' + (fx ? ' ' + fx : '') + (form === 'mini' ? ' gk-mini-root' + (minipos === 'top' ? ' gk-mini-top' : ' gk-mini-bottom') : ''),
         style: pos ? { right: 'auto', bottom: 'auto', left: pos.x, top: pos.y } : undefined,
       },
         open && React.createElement('div', {
@@ -764,20 +803,21 @@ module.exports = {
           onMouseDown: manualTouch,
         },
           React.createElement('div', { className: 'gk-head' },
-            React.createElement('span', {
-              className: 'gk-chip',
-              style: { background: subjectColor(card && card.subject) },
-            }, card ? card.subject : '课本'),
-            React.createElement('span', { className: 'gk-grade' }, card ? card.grade : '高中'),
-            React.createElement('div', { className: 'gk-htext' },
-              React.createElement('div', { className: 'gk-title' }, card ? card.title : '梦回高三')),
-            React.createElement('div', { className: 'gk-days', title: examDate ? `高考日：${customExam || examDate}` : '' },
-              React.createElement('div', null, '距高考'),
-              React.createElement('b', null, daysText), '天'),
-            React.createElement('button', {
-              className: 'gk-close', title: '收起',
-              onClick: () => { setPanel('body'); setOpen(false) },
-            }, '✕')),
+            React.createElement('div', { className: 'gk-headrow' },
+              React.createElement('span', {
+                className: 'gk-chip',
+                style: { background: subjectColor(card && card.subject) },
+              }, card ? card.subject : '课本'),
+              React.createElement('span', { className: 'gk-grade' }, card ? card.grade : '高中'),
+              React.createElement('div', { className: 'gk-headspacer' }),
+              React.createElement('div', { className: 'gk-days', title: examDate ? `高考日：${customExam || examDate}` : '' },
+                React.createElement('div', null, '距高考'),
+                React.createElement('b', null, daysText), '天'),
+              React.createElement('button', {
+                className: 'gk-close', title: '收起',
+                onClick: () => { setPanel('body'); setOpen(false) },
+              }, '✕')),
+            React.createElement('div', { className: 'gk-title' }, card ? card.title : '梦回高三')),
           origin && React.createElement('div', { className: 'gk-origin' }, ORIGINS[origin] || '缘起'),
           panel === 'favs'
             ? listPanel(favs, LS_FAVS, setFavs, '还没有收藏，遇到重要的知识点点个 ❤ 吧')
@@ -876,7 +916,22 @@ module.exports = {
                         className: 'gk-chipx' + (form === 'strip' ? ' gk-on' : ''),
                         onClick: () => { setForm('strip'); lsSet(LS_FORM, 'strip') },
                       }, '竖条'),
-                      React.createElement('span', { className: 'gk-setc' }, '双击黑板可切换')),
+                      React.createElement('button', {
+                        className: 'gk-chipx' + (form === 'mini' ? ' gk-on' : ''),
+                        onClick: () => { setForm('mini'); lsSet(LS_FORM, 'mini') },
+                      }, '迷你'),
+                      React.createElement('span', { className: 'gk-setc' }, '双击黑板切竖条')),
+                    form === 'mini' && React.createElement('div', { className: 'gk-setdate' },
+                      React.createElement('span', null, '迷你位置'),
+                      React.createElement('button', {
+                        className: 'gk-chipx' + (minipos === 'bottom' ? ' gk-on' : ''),
+                        onClick: () => { setMinipos('bottom'); lsSet(LS_MINIPOS, 'bottom') },
+                      }, '页底'),
+                      React.createElement('button', {
+                        className: 'gk-chipx' + (minipos === 'top' ? ' gk-on' : ''),
+                        onClick: () => { setMinipos('top'); lsSet(LS_MINIPOS, 'top') },
+                      }, '页顶'),
+                      React.createElement('span', { className: 'gk-setc' }, '跑马灯滚动')),
                     React.createElement('div', { className: 'gk-setdate' },
                       React.createElement('span', null, '高考日期'),
                       React.createElement('input', {
@@ -935,7 +990,24 @@ module.exports = {
               onClick: () => window.open('https://github.com/weibaohui/dsh-gaokao/issues/new', '_blank'),
             }, '💬'),
             React.createElement('div', { className: 'gk-spacer' }))),
-        React.createElement('div', {
+        form === 'mini'
+          ? React.createElement('div', {
+              ref: stageRef, className: 'gk-mini',
+              title: '点击翻开知识卡',
+              onClick: () => { shake(); setOrigin(null); setOpen((v) => !v) },
+            },
+              React.createElement('span', { className: 'gk-mini-icon' }, '📖'),
+              React.createElement('div', { className: 'gk-mini-track' },
+                React.createElement('span', {
+                  key: card ? card.id : 'empty',   // 换卡时重置滚动
+                  className: 'gk-mini-text',
+                  style: { animationDuration: miniDur },
+                }, miniText)),
+              React.createElement('button', {
+                className: 'gk-mini-close', title: '退出 mini 模式',
+                onClick: (e) => { e.stopPropagation(); setForm('board'); lsSet(LS_FORM, 'board') },
+              }, '✕'))
+          : React.createElement('div', {
           ref: stageRef, className: 'gk-stage',
           title: form === 'board'
             ? `距离高考还有 ${daysText} 天（点击抽背，双击收成竖条）`
